@@ -1,0 +1,2 @@
+# PowerShell スクリプトは Windows 環境で編集・実行するため CRLF で取得する
+*.ps1 text eol=crlf
