@@ -184,6 +184,59 @@ $statusLabel.Text = ""
 # 検索
 # -----------------------------------------
 
+function New-EventRow {
+    param($EventRecord)
+
+    # メッセージやレベル表示名はイベント提供元のメッセージリソースに依存するため、
+    # 取得できないイベントが混ざっていても一覧全体が壊れないようイベント単位で受け止める。
+    # PowerShell はプロパティ取得時の例外を握りつぶして $null を返すことがあるため、
+    # 例外と値の両方で判定する。
+    $message = $null
+
+    try {
+        $message = $EventRecord.Message
+    }
+    catch {
+        $message = $null
+    }
+
+    if ([string]::IsNullOrWhiteSpace($message)) {
+        $message = "（このイベントのメッセージを取得できませんでした）"
+    }
+
+    $level = $null
+
+    try {
+        $level = $EventRecord.LevelDisplayName
+    }
+    catch {
+        $level = $null
+    }
+
+    if ($null -eq $level) {
+        $level = ""
+    }
+
+    # 一覧・CSV用に改行や連続する空白を1行にまとめる
+    $singleLine = ($message -replace '\s+', ' ').Trim()
+    $summary = $singleLine
+
+    if ($summary.Length -gt 200) {
+        $summary = $summary.Substring(0, 200) + "..."
+    }
+
+    [PSCustomObject]@{
+        TimeText       = "{0:yyyy/MM/dd HH:mm:ss}" -f $EventRecord.TimeCreated
+        LogName        = $EventRecord.LogName
+        Level          = $level
+        Id             = $EventRecord.Id
+        ProviderName   = $EventRecord.ProviderName
+        MessageSummary = $summary
+        MessageLine    = $singleLine
+        FullMessage    = $message
+    }
+}
+
 function Get-TargetLogs {
     switch ($comboLog.SelectedItem) {
         "System"      { return @("System") }
@@ -215,15 +268,18 @@ function Show-EventDetail {
 
     $row = $script:CurrentRows[$index]
 
-    $detail.Text = @"
-時刻: $($row.TimeText)
-ログ: $($row.LogName)
-レベル: $($row.Level)
-イベントID: $($row.Id)
-ソース: $($row.ProviderName)
+    # テキストボックスは CRLF でないと改行として表示しないため、改行コードをそろえる
+    $body = ($row.FullMessage -replace "`r`n", "`n") -replace "`n", "`r`n"
 
-$($row.FullMessage)
-"@
+    $detail.Text = @(
+        "時刻: $($row.TimeText)",
+        "ログ: $($row.LogName)",
+        "レベル: $($row.Level)",
+        "イベントID: $($row.Id)",
+        "ソース: $($row.ProviderName)",
+        "",
+        $body
+    ) -join "`r`n"
 }
 
 function Clear-Result {
@@ -293,31 +349,7 @@ function Search-Events {
     }
 
     $script:CurrentRows = @(
-        $events | ForEach-Object {
-            $message = $_.Message
-            if ($null -eq $message) {
-                $message = ""
-            }
-
-            # 一覧・CSV用に改行や連続する空白を1行にまとめる
-            $singleLine = ($message -replace '\s+', ' ').Trim()
-            $summary = $singleLine
-
-            if ($summary.Length -gt 200) {
-                $summary = $summary.Substring(0, 200) + "..."
-            }
-
-            [PSCustomObject]@{
-                TimeText       = "{0:yyyy/MM/dd HH:mm:ss}" -f $_.TimeCreated
-                LogName        = $_.LogName
-                Level          = $_.LevelDisplayName
-                Id             = $_.Id
-                ProviderName   = $_.ProviderName
-                MessageSummary = $summary
-                MessageLine    = $singleLine
-                FullMessage    = $message
-            }
-        }
+        $events | ForEach-Object { New-EventRow -EventRecord $_ }
     )
 
     $grid.SuspendLayout()
