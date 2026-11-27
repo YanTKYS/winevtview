@@ -56,3 +56,11 @@ powershell.exe -ExecutionPolicy Bypass -File .\winevtview.ps1
 
 - 本ツールはイベントログの**閲覧のみ**を行います。イベントログの変更・削除・クリアは行いません。
 - 対象は System / Application ログです。Security ログ、リモート PC のログ取得、常駐監視には対応していません。
+
+## ライセンス
+
+本リポジトリの自作部分（`winevtview.ps1` および `README.md`）は [MIT License](LICENSE) で提供します。
+Copyright (c) 2026 YanTKYS
+
+- `winevtview.ps1` は単独で配布・利用されることを想定し、ファイル先頭に MIT License の全文をコメントとして記載しています。
+- 第三者のコード・ライブラリ・素材・データは同梱していません（Windows 標準の PowerShell / .NET Framework の機能のみを利用します）。
